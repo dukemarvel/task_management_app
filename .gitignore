@@ -1,6 +1,8 @@
 backend/backend/
 backend/__pycache__/
 backend/*.pyc
+backend/.env
+backend/tests/__pycache__/
 TaskManagementApp/node_modules/
 TaskManagementApp/.expo/
 TaskManagementApp/dist/
