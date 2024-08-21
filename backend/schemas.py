@@ -11,8 +11,8 @@ class User(UserBase):
     id: int
     is_active: bool
 
-    class Config:
-        orm_mode = True
+    class ConfigDict:
+        from_attributes = True
 
 class TaskBase(BaseModel):
     title: str
@@ -28,4 +28,4 @@ class Task(TaskBase):
     owner_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True

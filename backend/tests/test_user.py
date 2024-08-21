@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
-from backend.main import app, get_db 
+from backend.main import app
+from backend.dependencies import get_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from backend.models import Base
