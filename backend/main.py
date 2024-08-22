@@ -1,10 +1,11 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, WebSocketDisconnect, WebSocket
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas, auth
 from .database import engine
 from .dependencies import get_db
+from .connections import ConnectionManager
 
 app = FastAPI()
 
@@ -70,3 +71,16 @@ def delete_task(task_id: int, db: Session = Depends(get_db), current_user: model
     db.delete(db_task)
     db.commit()
     return db_task
+
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/chat/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: int):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.broadcast(f"User {user_id} says: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
