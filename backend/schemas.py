@@ -27,5 +27,5 @@ class Task(TaskBase):
     id: int
     owner_id: int
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
