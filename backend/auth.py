@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from . import models, schemas
+from . import models
 from .dependencies import get_db
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -23,6 +23,8 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
+    if not password:
+        raise ValueError("Password cannot be empty")
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
