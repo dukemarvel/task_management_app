@@ -38,7 +38,7 @@ def setup_and_teardown():
     Base.metadata.drop_all(bind=engine)  # Drop all the tables after tests
 
 def test_register_user():
-    response = client.post("/register", json={
+    response = client.post("api/v1/register", json={
         "email": "test@example.com",
         "password": "password123",
         "full_name": "Test User"
@@ -49,13 +49,13 @@ def test_register_user():
 
 def test_login_for_access_token():
     # First, register a user
-    client.post("/register", json={
+    client.post("api/v1/register", json={
         "email": "test@example.com",
         "password": "password123",
         "full_name": "Test User"
     })
 
-    response = client.post("/login", data={
+    response = client.post("api/v1/login", data={
         "username": "test@example.com",
         "password": "password123"
     })
@@ -65,13 +65,13 @@ def test_login_for_access_token():
 
 def test_login_with_incorrect_password():
     # Register the user first
-    client.post("/register", json={
+    client.post("api/v1/register", json={
         "email": "test@example.com",
         "password": "password123",
         "full_name": "Test User"
     })
 
-    response = client.post("/login", data={
+    response = client.post("api/v1/login", data={
         "username": "test@example.com",
         "password": "wrongpassword"
     })

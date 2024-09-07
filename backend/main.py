@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, WebSocketDisconnect, WebSocket, Query
+from fastapi import Depends, FastAPI, HTTPException, WebSocketDisconnect, WebSocket, Query, APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
@@ -6,13 +6,26 @@ from . import models, schemas, auth
 from .database import engine
 from .dependencies import get_db
 from .connections import ConnectionManager
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# Create the database tables
 models.Base.metadata.create_all(bind=engine)
 
+# Set up CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.post("/register", response_model=schemas.User)
+# Define an APIRouter for versioned API routes
+api_router = APIRouter()
+
+@api_router.post("/register", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -24,7 +37,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
-@app.post("/login")
+@api_router.post("/login")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -32,7 +45,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/tasks/", response_model=schemas.Task)
+@api_router.post("/tasks", response_model=schemas.Task)
 def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_task = models.Task(**task.model_dump(), owner_id=current_user.id)
     db.add(db_task)
@@ -40,7 +53,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db), current
     db.refresh(db_task)
     return db_task
 
-@app.get("/tasks/", response_model=List[schemas.Task])
+@api_router.get("/tasks", response_model=List[schemas.Task])
 def read_tasks(
     skip: int = Query(0, ge=0), 
     limit: int = Query(10, ge=1), 
@@ -50,14 +63,14 @@ def read_tasks(
     tasks = db.query(models.Task).filter(models.Task.owner_id == current_user.id).offset(skip).limit(limit).all()
     return tasks
 
-@app.get("/tasks/{task_id}", response_model=schemas.Task)
+@api_router.get("/tasks/{task_id}", response_model=schemas.Task) 
 def read_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     task = db.query(models.Task).filter(models.Task.id == task_id, models.Task.owner_id == current_user.id).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-@app.put("/tasks/{task_id}", response_model=schemas.Task)
+@api_router.put("/tasks/{task_id}", response_model=schemas.Task) 
 def update_task(task_id: int, task: schemas.TaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_task = db.query(models.Task).filter(models.Task.id == task_id, models.Task.owner_id == current_user.id).first()
     if db_task is None:
@@ -68,7 +81,7 @@ def update_task(task_id: int, task: schemas.TaskCreate, db: Session = Depends(ge
     db.refresh(db_task)
     return db_task
 
-@app.delete("/tasks/{task_id}", response_model=schemas.Task)
+@api_router.delete("/tasks/{task_id}", response_model=schemas.Task) 
 def delete_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_task = db.query(models.Task).filter(models.Task.id == task_id, models.Task.owner_id == current_user.id).first()
     if db_task is None:
@@ -89,3 +102,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
             await manager.broadcast(f"User {user_id} says: {data}")
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+
+app.include_router(api_router, prefix="/api/v1")

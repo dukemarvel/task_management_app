@@ -8,4 +8,4 @@ def signal_handler(sig, frame):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="192.168.43.199", port=5000)

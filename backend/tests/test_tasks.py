@@ -1,3 +1,5 @@
+# test_tasks.js
+
 import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
@@ -9,11 +11,9 @@ from backend.auth import get_password_hash, create_access_token
 from backend.dependencies import get_db
 import os
 
-
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
-
 
 # Setup the TestClient
 client = TestClient(app)
@@ -79,7 +79,7 @@ def test_create_task(token):
     print(f"Token-printed: {token}")
     
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Test Task", "description": "Test Description", "status": "pending", "due_date": "2024-08-21"}
     )
@@ -93,7 +93,7 @@ def test_create_task(token):
     
 def test_read_tasks(token):
     response = client.get(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"}
     )
     
@@ -105,7 +105,7 @@ def test_read_tasks(token):
 def test_read_task(token):
     # First, create a task to be read
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Test Task", "description": "Test Description", "status": "pending", "due_date": "2024-08-21"}
     )
@@ -113,7 +113,7 @@ def test_read_task(token):
     
 
     # Now read the task
-    response = client.get(f"/tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
+    response = client.get(f"/api/v1/tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
     
     assert response.status_code == 200
     data = response.json()
@@ -122,7 +122,7 @@ def test_read_task(token):
 def test_update_task(token):
     # First, create a task to be updated
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Test Task", "description": "Test Description", "status": "pending", "due_date": "2024-08-21"}
     )
@@ -131,7 +131,7 @@ def test_update_task(token):
 
     # Now update the task
     response = client.put(
-        f"/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Updated Task", "description": "Updated Description", "status": "completed", "due_date": "2024-08-22"}
     )
@@ -144,23 +144,23 @@ def test_update_task(token):
 def test_delete_task(token):
     # First, create a task to be deleted
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Test Task", "description": "Test Description", "status": "pending", "due_date": "2024-08-21"}
     )
     task_id = response.json()["id"]
     
     # Now delete the task
-    response = client.delete(f"/tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
+    response = client.delete(f"/api/v1/tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == task_id
 
 
-#Invalid data handling tests
+# Invalid data handling tests
 def test_create_task_with_missing_fields(token):
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"description": "Test Description"}  # Missing title
     )
@@ -168,7 +168,7 @@ def test_create_task_with_missing_fields(token):
 
 def test_create_task_with_invalid_due_date(token):
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": "Test Task", "description": "Test Description", "due_date": "invalid-date"}
     )
@@ -177,7 +177,7 @@ def test_create_task_with_invalid_due_date(token):
 def test_create_task_with_long_title(token):
     long_title = "A" * 1000  # Assuming 1000 is longer than the allowed title length
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": long_title, "description": "Test Description"}
     )
@@ -189,7 +189,7 @@ def test_create_task_invalid_token():
     fake_token = "Bearer faketoken123"
     
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": fake_token},
         json={"title": "Task with Invalid Token", "description": "This should fail"}
     )
@@ -201,7 +201,7 @@ def test_create_task_expired_token():
     # Assume expired_token is generated to simulate an expired token
     expired_token = "fake.expired.token"
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {expired_token}"},
         json={"title": "Test Task", "description": "Test Description"}
     )
@@ -210,7 +210,7 @@ def test_create_task_expired_token():
 
 def test_create_task_no_token_provided():
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         # No Authorization header provided
         json={"title": "Task with No Token", "description": "This should fail too"}
     )
@@ -219,25 +219,25 @@ def test_create_task_no_token_provided():
     assert response.json() == {"detail": "Not authenticated"}
 
 
-#Boundary tests
+# Boundary tests
 def test_pagination_limits(token):
     # Test with negative skip value
     response = client.get(
-        "/tasks/?skip=-1&limit=10",
+        "/api/v1/tasks?skip=-1&limit=10",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 422  # Expecting a validation error
 
     # Test with a limit of 0
     response = client.get(
-        "/tasks/?skip=0&limit=0",
+        "/api/v1/tasks?skip=0&limit=0",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 422  # Expecting a validation error
 
     # Test with an excessively high limit value
     response = client.get(
-        "/tasks/?skip=0&limit=10000",
+        "/api/v1/tasks?skip=0&limit=10000",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
@@ -250,7 +250,7 @@ import threading
 
 def create_task(token, task_num):
     response = client.post(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
         json={"title": f"Concurrent Task {task_num}", "description": "Test Description", "status": "pending", "due_date": "2024-08-21"}
     )
@@ -259,14 +259,14 @@ def create_task(token, task_num):
 
 def delete_task(token, task_id):
     response = client.delete(
-        f"/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
 
 def clear_all_tasks(token):
     response = client.get(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
@@ -294,7 +294,7 @@ def test_concurrent_task_creation_and_deletion(token):
 
     # Verify all tasks were created
     response = client.get(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
@@ -313,7 +313,7 @@ def test_concurrent_task_creation_and_deletion(token):
 
     # Verify tasks were deleted
     response = client.get(
-        "/tasks/",
+        "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
